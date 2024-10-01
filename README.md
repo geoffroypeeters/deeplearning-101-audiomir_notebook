@@ -1,30 +1,32 @@
-README tutorial ISMIR 2024
-last update: 2024 06 26
+# Deep Learning 101 for Audio-based Music Information Retrieval
 
-Front-ends
-    HCQT
-    Conv1-D
-        dilated -> wavenet
-        parametrized -> Sincnet, Leaf
+This project contains the code and the notebook for the ISMIR-2024 tutorial "Deep Learning 101 for Audio-based Music Information Retrieval".
 
-Conv-2D
-    Convolution
-    ResNet
-    ConvNext
-    Dephwise separable
+It illutstrates the use of Deep Learning components through 3 common MIR tasks
+- Multi-Pitch-Estimation
+- Cover-Song-Identification
+- Auto-Tagging
 
-Architecture
-    Auto-encoder
-    VAE
-    VQ-VAE
-    RVQ
+## TUTO-task-Multi-Pitch-Estimation 
 
-RNN, LSTM, Transformer, Conformer
-    Auto-regressive models
+illustrates the use of 
+- two inpues: CQT and Harmonic-CQT
+- different architecture ConvNet and U-Net
+- different variants of convolution: dephtwise-separable, residual-conv
 
-Task
-    Multi-pitch 
-    Chord recognition
+## TUTO-task-Conver-Song-Identification
 
-Triplet Loss
-Contrastive Learning# Deep Learning 101 for Audio-based Music Information Retrieval
+illustrates the use of
+- attention over time and auto-pooling [McFee]
+- metric learning using triplet loss
+- different triplet mining strategy
+- performance measure using ranking
+
+## TUTO-task-Auto-Tagging
+
+illustrates the use of
+- different inputs:front-end: Waveform (1D) or Log-Mel-Spectrogram (2D)
+- different front-end: 1DConv, TCN, SincNet, 2DConv
+- different variants of convolution
+
+
