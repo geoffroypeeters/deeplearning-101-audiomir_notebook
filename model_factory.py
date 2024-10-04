@@ -5,6 +5,67 @@ from model_module import SincConv_fast
 from torch.nn.utils import weight_norm
 
 
+# ConvNeXt PAPER: https://arxiv.org/pdf/2201.03545
+# ConvNeXt CODE: https://github.com/facebookresearch/ConvNeXt/blob/main/models/convnext.py
+class ConvNeXtBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=7, drop_path=0.0):
+        super(ConvNeXtBlock, self).__init__()
+        
+        # 1. Depthwise convolution (spatial convolution with large kernel)
+        self.dwconv = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, padding=kernel_size // 2, groups=in_channels)
+        
+        # 2. Layer normalization applied across channels
+        self.norm = nn.LayerNorm(in_channels, eps=1e-6)  # LayerNorm is applied after permuting to (B, C, H, W)
+        
+        # 3. Pointwise convolution to project to higher dimensions (expanding and compressing channels)
+        self.pwconv1 = nn.Linear(in_channels, 4 * in_channels)  # expand channels by 4x
+        self.act = nn.GELU()  # GELU activation
+        self.pwconv2 = nn.Linear(4 * in_channels, out_channels)  # project back to original channels
+        
+        # 4. Stochastic depth (optional) for better regularization
+        self.drop_path = nn.Identity() if drop_path == 0 else StochasticDepth(drop_path)
+    
+    def forward(self, x):
+        # Input: (B, C, H, W)
+        residual = x
+
+        # 1. Depthwise convolution
+        x = self.dwconv(x)
+        
+        # 2. LayerNorm after permute to (B, H, W, C)
+        x = x.permute(0, 2, 3, 1)  # (B, C, H, W) -> (B, H, W, C)
+        x = self.norm(x)
+        
+        # 3. Pointwise convolutions + GELU
+        x = self.pwconv1(x)
+        x = self.act(x)
+        x = self.pwconv2(x)
+        
+        # 4. Drop path (if applicable) and residual connection
+        x = x.permute(0, 3, 1, 2)  # (B, H, W, C) -> (B, C, H, W)
+        x = self.drop_path(x) + residual  # Add residual connection
+        
+        return x
+
+class StochasticDepth(nn.Module):
+    """Drop paths (stochastic depth) per sample (when applied in the main path of residual blocks)."""
+    def __init__(self, drop_prob=None):
+        super(StochasticDepth, self).__init__()
+        self.drop_prob = drop_prob
+    
+    def forward(self, x):
+        if not self.training or self.drop_prob == 0.0:
+            return x
+        keep_prob = 1 - self.drop_prob
+        # Sample binary mask
+        shape = (x.shape[0],) + (1,) * (x.ndim - 1)
+        random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
+        binary_mask = torch.floor(random_tensor)
+        return x / keep_prob * binary_mask
+
+
+
+
 # TCN paper: https://arxiv.org/pdf/1803.01271
 # TCN code: https://github.com/locuslab/TCN
 class Chomp1d(nn.Module):
@@ -312,7 +373,15 @@ def f_parse_component(type, param, current_input_dim):
         if param.stride != 1: print(f'only work for stride=1, got {param}')
         module = ResidualBlock(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size = param.kernel_size, stride = 1)
         current_input_dim[1] = param.out_channels
-        
+    
+    elif type=='Conv2dNext': # --- B, C, H=Freq, W=Time
+        if param.in_channels==-1: param.in_channels=current_input_dim[1]
+        if param.out_channels != param.in_channels: print(f'param.out_channels should = param.in_channels because of residual connection')
+        if param.padding != 'same': print(f'only work for padding=same, got {param}')
+        if param.stride != 1: print(f'only work for stride=1, got {param}')
+        module = ConvNeXtBlock(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=7, drop_path=0.0)
+        current_input_dim[1] = param.out_channels
+
     elif type=='ConvTranspose2d':
         if param.in_channels==-1: param.in_channels=current_input_dim[1] 
         module = nn.ConvTranspose2d(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=param.kernel_size, stride=param.stride)
