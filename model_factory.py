@@ -314,7 +314,6 @@ def f_parse_component(type, param, current_input_dim):
     # --- Conv2D:   B, C, H=Freq, W=Time
 
     #print(type, param)
-
     if type=='LayerNorm':
         if param.normalized_shape==-1: param.normalized_shape = current_input_dim[1:] # --- B, C, T
         module = nn.LayerNorm(normalized_shape=param.normalized_shape)

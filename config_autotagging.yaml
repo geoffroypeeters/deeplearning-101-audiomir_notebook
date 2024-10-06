@@ -4,20 +4,20 @@ model:
     - sequential_l:
         - component_l:
 # Temporal
-            - [LayerNorm, {'normalized_shape': [1, 3200]}]
+            #- [LayerNorm, {'normalized_shape': [1, 3200]}]
 # SincNet            
             #- [SincNet, {'in_channels': 1, 'out_channels': 80, 'kernel_size': 251, 'stride': 1, 'sr_hz': 16000}]
             #- [AbsLayer, empty]
 # Conv1D
             #- [Conv1d, {'in_channels': 1, 'out_channels': 80, 'kernel_size': 251, 'stride': 15}]
 # TCN
-            - [Conv1dTCN, {'in_channels': 1, 'num_channels': [4, 8, 16, 32]}]
+            #- [Conv1dTCN, {'in_channels': 1, 'num_channels': [4, 8, 16, 32]}]
 # Frequency/Time
-            #- [LayerNorm, {'normalized_shape': [128, 64]}]
-            #- [Conv2d, {'in_channels': 1, 'out_channels': 80, 'kernel_size': [128, 5], 'stride': [1,1]}]
-            #- [Squeeze, {'dim': 2}]
+            - [LayerNorm, {'normalized_shape': [128, 64]}]
+            - [Conv2d, {'in_channels': 1, 'out_channels': 80, 'kernel_size': [128, 5], 'stride': [1,1]}]
+            - [Squeeze, {'dim': 2}]
 # All temporal
-            - [MaxPool1d, {'kernel_size': 3, 'stride': 3}]
+            #- [MaxPool1d, {'kernel_size': 3, 'stride': 3}]
 # All            
             - [LayerNorm, {'normalized_shape': -1}]
             - [Activation, LeakyReLU]
