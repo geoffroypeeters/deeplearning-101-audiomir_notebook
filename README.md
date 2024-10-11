@@ -1,6 +1,6 @@
 # Deep Learning 101 for Audio-based Music Information Retrieval
 
-This project contains the code and the notebook for the ISMIR-2024 tutorial "Deep Learning 101 for Audio-based Music Information Retrieval".
+This repository contains the code and the notebooks for the ISMIR-2024 tutorial "Deep Learning 101 for Audio-based Music Information Retrieval".
 
 It illutstrates the use of Deep Learning components through 3 common MIR tasks
 - Multi-Pitch-Estimation
@@ -10,7 +10,7 @@ It illutstrates the use of Deep Learning components through 3 common MIR tasks
 ## TUTO-task-Multi-Pitch-Estimation 
 
 illustrates the use of 
-- two inpues: CQT and Harmonic-CQT
+- two inputs: CQT and Harmonic-CQT
 - different architecture ConvNet and U-Net
 - different variants of convolution: dephtwise-separable, residual-conv
 
