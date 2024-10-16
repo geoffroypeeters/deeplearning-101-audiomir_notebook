@@ -281,12 +281,34 @@ class nnBatchNorm1dT(nn.Module):
     def forward(self, X):
         return self.module(X.permute(0,2,1)).permute(0,2,1)
 
-class nnEmpty(nn.Module):
+class nnDoubleChannel(nn.Module):
     """ encapsultate do-nothing as an object """
     def __init__(self):
         super().__init__()
     def forward(self, X):
         return X
+
+class nnStoreAs(nn.Module):
+    """ ??? """
+    def __init__(self, key):
+        super().__init__()
+        self.key = key
+    def __str__(self):
+        return f"nnStoreAs(key={self.key})"
+    def forward(self, X):
+        return X
+
+class nnCatWith(nn.Module):
+    """ ??? """
+    def __init__(self, key):
+        super().__init__()
+        self.key = key
+    def __str__(self):
+        return f"nnCatWith(key={self.key})"
+    def forward(self, X):
+        return X
+ 
+
 
 class nnSoftmaxWeight(nn.Module):
     """ 
@@ -356,6 +378,7 @@ def f_parse_component(module_type, param, current_input_dim):
     # --- Conv2D:   B, C, H=Freq, W=Time
 
     #print(module_type, param)
+
     if module_type=='LayerNorm':
         if param.normalized_shape==-1:
             param.normalized_shape = current_input_dim[1:] # --- B, C, T
@@ -517,10 +540,53 @@ def f_parse_component(module_type, param, current_input_dim):
         module = nnAbs()
 
     elif module_type=='DoubleChannel': # --- for U-Net
-        module = nnEmpty()
+        module = nnDoubleChannel()
         current_input_dim[1] *= 2
 
+    elif module_type=='StoreAs':
+        module = nnStoreAs(param)
+        
+    elif module_type=='CatWith':
+        module = nnCatWith(param)
+    
     else:
         print(f'UNKNOWN module "{module_type}"')
 
     return module, current_input_dim
+
+
+
+
+class NetModel(nn.Module):
+    """
+    Generic class for neural-network models based on the f_parse_component of .yaml file
+    """
+    def __init__(self, config, current_input_dim):
+        super().__init__()
+        # --- Do all blocks
+        self.block_l = []        
+        for config_block in config.model.block_l:
+            # --- Do all sequential
+            sequential_l = []
+            for config_sequential in config_block.sequential_l:
+                # --- Do one sequential
+                layer_l = []
+                for config_layer in config_sequential.layer_l:
+                    module, current_input_dim = f_parse_component(config_layer[0], config_layer[1], current_input_dim) 
+                    layer_l.append( module )
+                # Add to the list of sequentiak
+                sequential_l.append( nn.Sequential (*layer_l) )
+            # --- Add to the list of blocks
+            self.block_l.append( nn.ModuleList(sequential_l) )
+        self.model = nn.ModuleList(self.block_l)
+
+    def forward(self, X, do_verbose=False):
+        store_d = {}
+        for idx_block, block in enumerate(self.model):
+            for idx_sequential, sequential in enumerate(block):
+                if do_verbose:   print(f'{idx_block}/{idx_sequential}---------------------------------\n{sequential}\n> in: {X.size()}')
+                if isinstance(sequential[0], nnStoreAs): store_d[sequential[0].key] = X
+                elif isinstance(sequential[0], nnCatWith): X = torch.cat( ( X, store_d[sequential[0].key]), dim=1)
+                else: X = sequential( X )
+                if do_verbose: print(f'> out: {X.size()}')
+        return X

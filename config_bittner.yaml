@@ -1,37 +1,37 @@
 model:
     name: Bittner
-    block_l:
-    - sequential_l:
-        - component_l:
+    block_l: # A list of blocks
+    - sequential_l: # -- Each block is a list of sequential
+        - layer_l: # --- Each sequential is a list of layers
             - [BatchNorm2d, {'num_features': -1}]
             - [Conv2d, {'in_channels': -1, 'out_channels': 128, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
             - [Activation, ReLU]
-        - component_l:
+        - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
-#            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
+            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
 #            - [Conv2dDS, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
-#            - [Activation, ReLU]
-            - [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
-        - component_l:
-            - [BatchNorm2d, {'num_features': -1}]
-#            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
-#            - [Conv2dDS, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
-#            - [Activation, ReLU]
+            - [Activation, ReLU]
 #            - [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
-            - [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
-        - component_l:
+        - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
-#            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
+            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
 #            - [Conv2dDS, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
-#            - [Activation, ReLU]
+            - [Activation, ReLU]
 #            - [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
-            - [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
-        - component_l:
+#            - [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
+        - layer_l:
+            - [BatchNorm2d, {'num_features': -1}]
+            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
+#            - [Conv2dDS, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
+            - [Activation, ReLU]
+#            - [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
+#            - [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
+        - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
             - [Conv2d, {'in_channels': -1, 'out_channels': 8, 'kernel_size': [70,3], 'stride': 1, 'padding': 'same'}]
 #            - [Conv2dDS, {'in_channels': -1, 'out_channels': 8, 'kernel_size': [70,3], 'stride': 1, 'padding': 'same'}]
             - [Activation, ReLU]
-        - component_l:
+        - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
             - [Conv2d, {'in_channels': -1, 'out_channels': 1, 'kernel_size': [1,1], 'stride': 1, 'padding': 'same'}]
 

@@ -78,7 +78,7 @@ def f_get_hcqt(audio_v, sr_hz, param_hcqt):
                                 bins_per_octave=param_hcqt.BINS_PER_OCTAVE,
                                 n_bins=param_hcqt.N_BINS))
         if idx==0:
-            data_3m = np.zeros((len(param_hcqt.h_l), A_m.shape[0], A_m.shape[1]))
+            data_3m = np.zeros((len(param_hcqt.h_l), data_m.shape[0], data_m.shape[1]))
         data_3m[idx,:,:] = data_m
 
     n_times = data_3m.shape[2]
@@ -110,7 +110,7 @@ def f_get_patches(total_len, patch_len, patch_hopsize):
     patch_l
         list of dictionary of type {'start_frame':, 'end_frame': }
     """
-    # --- patch_d.L_frame+(nb_patch-1)*patch_d.STEP_frame < nb_frame
-    nb_patch = int(np.floor((total_len - patch_len/patch_hopsize + 1))
-    patch_l = [{'start_frame': (num_patch*frame_hopsize), 'end_frame': (num_patch*patch_hopsize)+patch_len} for num_patch in range(nb_patch)]
-    return path_l
+    # --- patch_len+(nb_patch-1)*patch_hopsize < total_len
+    nb_patch = int(np.floor((total_len - patch_len)/patch_hopsize + 1))
+    patch_l = [{'start_frame': (num_patch*patch_hopsize), 'end_frame': (num_patch*patch_hopsize)+patch_len} for num_patch in range(nb_patch)]
+    return patch_l
