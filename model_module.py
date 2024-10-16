@@ -1,10 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+File: model_module.py
+Description: Code copy from https://github.com/mravanelli/SincNet/tree/master to perform SincNet front-end
+Author: geoffroy.peeters@telecom-paris.fr
+"""
+
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-# Paper: https://arxiv.org/pdf/1808.00158
-# Code: https://github.com/mravanelli/SincNet/tree/master
 class SincConv_fast(nn.Module):
     """Sinc-based convolution
     Parameters

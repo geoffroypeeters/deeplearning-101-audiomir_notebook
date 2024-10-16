@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+File: model_module.py
+Description: factory to create pytorch DL-models from *.yaml configuration file
+Author: geoffroy.peeters@telecom-paris.fr
+"""
+
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -206,41 +215,41 @@ def f_get_next_size(in_L, k, s):
     return int(np.floor( (in_L-k)/s+1 ))
 
 
-def f_get_activation(value):
+def f_get_activation(activation_type):
     """ return the corresponding activation class """
-    if value=='Sigmoid': 
-        value = nn.Sigmoid()
-    if value=='Softmax': 
-        value = nn.Softmax()
-    if value=='ReLU': 
-        value = nn.ReLU()
-    if value=='LeakyReLU': 
-        value = nn.LeakyReLU()
-    if value=='PReLU':
-        value = nn.PReLU()
-    return value
+    if activation_type=='Sigmoid': 
+        activation = nn.Sigmoid()
+    elif activation_type=='Softmax': 
+        activation = nn.Softmax()
+    elif activation_type=='ReLU': 
+        activation = nn.ReLU()
+    elif activation_type=='LeakyReLU': 
+        activation = nn.LeakyReLU()
+    elif activation_type=='PReLU':
+        activation = nn.PReLU()
+    return activation
 
 
 class nnAbs(nn.Module):
-    """ encapsultate torch.abs """
+    """ encapsultate *.abs as an object """
     def __init__(self):
-        super(nnAbs, self).__init__()
-    def forward(self, x):
-        return torch.abs(x)
+        super().__init__()
+    def forward(self, X):
+        return torch.abs(X)
 
 class nnMean(nn.Module):
-    """ encapsultate torch.mean """
+    """ encapsultate *.mean as an object """
     def __init__(self, dim, keepdim):
-        super(nnMean, self).__init__()
+        super().__init__()
         self.dim = dim
         self.keepdim = keepdim
     def forward(self, X):
         return torch.mean(X, self.dim, self.keepdim)
 
 class nnMax(nn.Module):
-    """ encapsultate torch.mean """
+    """ encapsultate *.mean  as an object """
     def __init__(self, dim, keepdim):
-        super(nnMax, self).__init__()
+        super().__init__()
         self.dim = dim
         self.keepdim = keepdim
     def forward(self, X):
@@ -248,17 +257,18 @@ class nnMax(nn.Module):
         return out
 
 class nnSqueeze(nn.Module):
+    """ encapsultate .Squeeze as an object """
     def __init__(self, dim):
-        super(nnSqueeze, self).__init__()
+        super().__init__()
         self.dim = dim
     def forward(self, X):
         out = X.squeeze(dim=self.dim)
         return out
 
 class nnPermute(nn.Module):
-    """ encapsultate .permute """
+    """ encapsultate *.permute as an object """
     def __init__(self, shape):
-        super(nnPermute, self).__init__()
+        super().__init__()
         self.shape = shape
     def forward(self, X):
         return X.permute(self.shape)
@@ -266,21 +276,38 @@ class nnPermute(nn.Module):
 class nnBatchNorm1dT(nn.Module):
     """ perform BatchNorm1d over transposed vector (in case input format is (B,T,C) """
     def __init__(self, num_features):
-        super(nnBatchNorm1dT, self).__init__()
+        super().__init__()
         self.module = nn.BatchNorm1d(num_features)
     def forward(self, X):
         return self.module(X.permute(0,2,1)).permute(0,2,1)
 
 class nnEmpty(nn.Module):
-    """ encapsultate .permute """
+    """ encapsultate do-nothing as an object """
     def __init__(self):
-        super(nnEmpty, self).__init__()
+        super().__init__()
     def forward(self, X):
         return X
 
+class nnSoftmaxWeight(nn.Module):
+    """ 
+    Perform attention weighing based on softmax with channel splitting
+    Code from https://github.com/furkanyesiler/move 
+    """
+    def __init__(self, nb_channel):
+        super().__init__()
+        self.nb_channel = nb_channel
+    def forward(self, X):
+        weights = torch.nn.functional.softmax(X[:, int(self.nb_channel/2):], dim=3)
+        X = torch.sum(X[:, :int(self.nb_channel/2)] * weights, dim=3, keepdim=True)
+        return X
+
 class nnAutoPoolWeight(nn.Module):
+    """ 
+    Perform attention weighing based on auto-pool (instead of softmax)
+    Code from https://github.com/furkanyesiler/move 
+    """
     def __init__(self):
-        super(nnAutoPoolWeight, self).__init__()
+        super().__init__()
         self.autopool_param = nn.Parameter(torch.tensor(0.).float())
     def forward(self, X):
         weights = f_autopool_weights(X, self.autopool_param)
@@ -288,174 +315,212 @@ class nnAutoPoolWeight(nn.Module):
         return X
 
 class nnAutoPoolWeightSplit(nn.Module):
-    def __init__(self, C):
-        super(nnAutoPoolWeightSplit, self).__init__()
+    """ 
+    Perform attention weighing based on auto-pool (instead of softmax) with channel splitting
+    Code from https://github.com/furkanyesiler/move 
+    """
+    def __init__(self, nb_channel):
+        super().__init__()
         self.autopool_param = nn.Parameter(torch.tensor(0.).float())
-        self.C = C
+        self.nb_channel = nb_channel
     def forward(self, X):
-        weights = f_autopool_weights(X[:, int(self.C/2):], self.autopool_param)
-        X = torch.sum(X[:, :int(self.C/2):] * weights, dim=3, keepdim=True)
-        return X
-
-class nnSoftmaxWeight(nn.Module):
-    def __init__(self, C):
-        super(nnSoftmaxWeight, self).__init__()
-        self.C = C
-    def forward(self, X):
-        weights = torch.nn.functional.softmax(X[:, int(self.C/2):], dim=3)
-        X = torch.sum(X[:, :int(self.C/2)] * weights, dim=3, keepdim=True)
+        weights = f_autopool_weights(X[:, int(self.nb_channel/2):], self.autopool_param)
+        X = torch.sum(X[:, :int(self.nb_channel/2):] * weights, dim=3, keepdim=True)
         return X
 
 
-def f_parse_component(type, param, current_input_dim):
-    """ parse type and param parameters to create NN layers, return the new dimensions of the tensor """
+
+def f_parse_component(module_type, param, current_input_dim):
+    """ 
+    Parse module_type and param parameters to create a new NN layers, return the new dimensions of the tensor
+
+    Parameters
+    ----------
+    module_type: str
+        type of the module to be added (such as 'LayerNorm', 'BatchNorm1d', ...)
+    param: dictionary
+        the parameters for the given module
+    current_input_dim: array of int
+        dimension of the inputs before adding this specific layer
+
+    Returns
+    -------
+    module
+        the newly created nn.Module
+    current_input_dim: : array of int
+        dimension of the outputs aftere adding this specific layer
+   """
+
     # --- FC:       B, D
     # --- Conv1D:   B, C, T
     # --- Conv2D:   B, C, H=Freq, W=Time
 
-    #print(type, param)
-    if type=='LayerNorm':
-        if param.normalized_shape==-1: param.normalized_shape = current_input_dim[1:] # --- B, C, T
+    #print(module_type, param)
+    if module_type=='LayerNorm':
+        if param.normalized_shape==-1:
+            param.normalized_shape = current_input_dim[1:] # --- B, C, T
         module = nn.LayerNorm(normalized_shape=param.normalized_shape)
-    
-    elif type=='BatchNorm1d':
-        if param.num_features==-1: param.num_features = current_input_dim[-1] # --- (B, D) or (B, T, D)
-        if 'affine' not in param.keys(): param.affine = True
+
+    elif module_type=='BatchNorm1d':
+        if param.num_features==-1:
+            param.num_features = current_input_dim[-1] # --- (B, D) or (B, T, D)
+        if 'affine' not in param.keys():
+            param.affine = True
         module = nn.BatchNorm1d(num_features=param.num_features, affine=param.affine)
-    
-    elif type=='BatchNorm1dT':
-        if param.num_features==-1: param.num_features = current_input_dim[-1] # --- (B, D) or (B, T, D)
+
+    elif module_type=='BatchNorm1dT':
+        if param.num_features==-1:
+            param.num_features = current_input_dim[-1] # --- (B, D) or (B, T, D)
         module = nnBatchNorm1dT(num_features=param.num_features)
-    
-    elif type=='BatchNorm2d':
-        if param.num_features==-1: param.num_features = current_input_dim[1] # --- (B, C, H, W)
+
+    elif module_type=='BatchNorm2d':
+        if param.num_features==-1:
+            param.num_features = current_input_dim[1] # --- (B, C, H, W)
         module = nn.BatchNorm2d(num_features=param.num_features)
-    
-    elif type=='SincNet': # --- B, C, T
-        if param.in_channels==-1: param.in_channels=current_input_dim[1] 
+
+    elif module_type=='SincNet': # --- B, C, T
+        if param.in_channels==-1:
+            param.in_channels=current_input_dim[1]
         module = SincConv_fast(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=param.kernel_size, stride=param.stride, sample_rate=param.sr_hz)
         current_input_dim[1] = param.out_channels
         current_input_dim[2] = f_get_next_size(current_input_dim[2], param.kernel_size, param.stride)
 
-    elif type=='Conv1d': # --- B, C, T
-        if param.in_channels==-1: param.in_channels=current_input_dim[1] 
+    elif module_type=='Conv1d': # --- B, C, T
+        if param.in_channels==-1:
+            param.in_channels=current_input_dim[1]
         module = nn.Conv1d(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=param.kernel_size, stride=param.stride)
         current_input_dim[1] = param.out_channels
         current_input_dim[2] = f_get_next_size(current_input_dim[2], param.kernel_size, param.stride)
 
-    elif type=='Conv1dTCN': # --- B, C, T
-        if param.in_channels==-1: param.in_channels=current_input_dim[1] 
+    elif module_type=='Conv1dTCN': # --- B, C, T
+        if param.in_channels==-1:
+            param.in_channels=current_input_dim[1]
         module = TemporalConvNet(num_inputs=param.in_channels, num_channels=param.num_channels)
         current_input_dim[1] = param.num_channels[-1]
         
-    elif type=='Conv2d': # --- B, C, H=Freq, W=Time
-        if param.in_channels==-1: param.in_channels=current_input_dim[1]
-        if 'padding' not in param.keys(): param.padding = 'valid'
+    elif module_type=='Conv2d': # --- B, C, H=Freq, W=Time
+        if param.in_channels==-1:
+            param.in_channels=current_input_dim[1]
+        if 'padding' not in param.keys():
+            param.padding = 'valid'
         module = nn.Conv2d(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=param.kernel_size, stride=param.stride, padding=param.padding)
         current_input_dim[1] = param.out_channels
         if param.padding != 'same':
             current_input_dim[2] = f_get_next_size(current_input_dim[2], param.kernel_size[0], param.stride[0])
             current_input_dim[3] = f_get_next_size(current_input_dim[3], param.kernel_size[1], param.stride[1])
-    
-    elif type=='Conv2dDS': # --- B, C, H=Freq, W=Time
-        if param.in_channels==-1: param.in_channels=current_input_dim[1]
-        if 'padding' not in param.keys(): param.padding = 'valid'
+
+    elif module_type=='Conv2dDS': # --- B, C, H=Freq, W=Time
+        if param.in_channels==-1:
+            param.in_channels=current_input_dim[1]
+        if 'padding' not in param.keys():
+            param.padding = 'valid'
         module = depthwise_separable_conv(nin=param.in_channels, kernels_per_layer=1, nout=param.out_channels, kernel_size=param.kernel_size, padding=param.padding)
         current_input_dim[1] = param.out_channels
         if param.padding != 'same':
             current_input_dim[2] = f_get_next_size(current_input_dim[2], param.kernel_size[0], param.stride[0])
             current_input_dim[3] = f_get_next_size(current_input_dim[3], param.kernel_size[1], param.stride[1])
-    
-    elif type=='Conv2dRes': # --- B, C, H=Freq, W=Time
-        if param.in_channels==-1: param.in_channels=current_input_dim[1]
-        if param.padding != 'same': print(f'only work for padding=same, got {param}')
-        if param.stride != 1: print(f'only work for stride=1, got {param}')
+
+    elif module_type=='Conv2dRes': # --- B, C, H=Freq, W=Time
+        if param.in_channels==-1:
+            param.in_channels=current_input_dim[1]
+        if param.padding != 'same':
+            print(f'only work for padding=same, got {param}')
+        if param.stride != 1:
+            print(f'only work for stride=1, got {param}')
         module = ResidualBlock(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size = param.kernel_size, stride = 1)
         current_input_dim[1] = param.out_channels
     
-    elif type=='Conv2dNext': # --- B, C, H=Freq, W=Time
-        if param.in_channels==-1: param.in_channels=current_input_dim[1]
-        if param.out_channels != param.in_channels: print(f'param.out_channels should = param.in_channels because of residual connection')
-        if param.padding != 'same': print(f'only work for padding=same, got {param}')
-        if param.stride != 1: print(f'only work for stride=1, got {param}')
+    elif module_type=='Conv2dNext': # --- B, C, H=Freq, W=Time
+        if param.in_channels==-1:
+            param.in_channels = current_input_dim[1]
+        if param.out_channels != param.in_channels:
+            print('param.out_channels should = param.in_channels because of residual connection')
+        if param.padding != 'same':
+            print(f'only work for padding=same, got {param}')
+        if param.stride != 1:
+            print(f'only work for stride=1, got {param}')
         module = ConvNeXtBlock(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=7, drop_path=0.0)
         current_input_dim[1] = param.out_channels
 
-    elif type=='ConvTranspose2d':
-        if param.in_channels==-1: param.in_channels=current_input_dim[1] 
+    elif module_type=='ConvTranspose2d':
+        if param.in_channels==-1:
+            param.in_channels = current_input_dim[1] 
         module = nn.ConvTranspose2d(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=param.kernel_size, stride=param.stride)
         current_input_dim[1] = param.out_channels
         current_input_dim[2] *= param.stride[0]
         current_input_dim[3] *= param.stride[1]
 
-    elif type=='MaxPool1d':  # --- B, C, T
-        if 'stride' not in param.keys(): param.stride=param.kernel_size
+    elif module_type=='MaxPool1d':  # --- B, C, T
+        if 'stride' not in param.keys():
+            param.stride = param.kernel_size
         module = nn.MaxPool1d(kernel_size=param.kernel_size, stride=param.stride)
         current_input_dim[2] = int(np.floor(current_input_dim[2]/param.kernel_size)) 
 
-    elif type=='MaxPool2d': # --- B, C, H=Freq, W=Time
-        if 'stride' not in param.keys(): param.stride=param.kernel_size
+    elif module_type=='MaxPool2d': # --- B, C, H=Freq, W=Time
+        if 'stride' not in param.keys():
+            param.stride = param.kernel_size
         module = nn.MaxPool2d(kernel_size=param.kernel_size, stride=param.stride)
         current_input_dim[2] = int(np.floor(current_input_dim[2]/param.kernel_size[0]))
         current_input_dim[3] = int(np.floor(current_input_dim[3]/param.kernel_size[1]))
-        
-    elif type=='Linear': 
-        if param.in_features==-1: param.in_features = current_input_dim[-1] # --- (B, D) or (B, T, D)
+
+    elif module_type=='Linear': 
+        if param.in_features==-1:
+            param.in_features = current_input_dim[-1] # --- (B, D) or (B, T, D)
         module = nn.Linear(in_features=param.in_features , out_features=param.out_features)
         current_input_dim[-1] = param.out_features
 
-    elif type=='Activation':   
+    elif module_type=='Activation':   
         module = f_get_activation(param)
 
-    elif type=='Dropout':   
+    elif module_type=='Dropout':   
         module = nn.Dropout(param.p)
 
-    elif type=='Flatten':
+    elif module_type=='Flatten':
         module = nn.Flatten(param.start_dim)
         current_input_dim =  [current_input_dim[0], current_input_dim[1]*current_input_dim[2]]
 
-    elif type=='Squeeze':
+    elif module_type=='Squeeze':
         module = nnSqueeze(param.dim)
         current_input_dim = [c for c in current_input_dim if c > 1]
 
-    elif type=='Permute':
+    elif module_type=='Permute':
         module = nnPermute(param.shape)
         current_input_dim =  [current_input_dim[s] for s in param.shape]
-    
-    elif type=='Mean':
+
+    elif module_type=='Mean':
         if 'keepdim' not in param.keys(): param.keepdim = False
         module = nnMean(param.dim, param.keepdim)
-        if param.keepdim==False: current_input_dim =  [current_input_dim[0], current_input_dim[1]]
+        if param.keepdim is False:
+            current_input_dim =  [current_input_dim[0], current_input_dim[1]]
 
-    elif type=='Max':
+    elif module_type=='Max':
         if 'keepdim' not in param.keys(): param.keepdim = False
         module = nnMax(param.dim, param.keepdim)
-        if param.keepdim==False: current_input_dim =  [current_input_dim[0], current_input_dim[1]]
+        if param.keepdim is False:
+            current_input_dim =  [current_input_dim[0], current_input_dim[1]]
 
-    elif type=='AutoPoolWeight':
+    elif module_type=='AutoPoolWeight':
         module = nnAutoPoolWeight()
         current_input_dim[3] = 1
-    
-    elif type=='AutoPoolWeightSplit':
+
+    elif module_type=='AutoPoolWeightSplit':
         module = nnAutoPoolWeightSplit(current_input_dim[1])
         current_input_dim[1] = int(current_input_dim[1]/2)
         current_input_dim[3] = 1
-    
-    elif type=='SoftmaxWeight':
+
+    elif module_type=='SoftmaxWeight':
         module = nnSoftmaxWeight(current_input_dim[1])
         current_input_dim[1] = int(current_input_dim[1]/2)
         current_input_dim[3] = 1
-    
 
-    elif type=='AbsLayer':
+    elif module_type=='AbsLayer':
         module = nnAbs()
-    
-    elif type=='DoubleChannel': # --- for U-Net
+
+    elif module_type=='DoubleChannel': # --- for U-Net
         module = nnEmpty()
         current_input_dim[1] *= 2
-    
+
     else:
-        print(f'UNKNOWN module "{type}"')
+        print(f'UNKNOWN module "{module_type}"')
 
     return module, current_input_dim
-
