@@ -1,22 +1,26 @@
+output_file: {'origin': 'TUTO_task_Cover_Song_Identification.ipynb', 'ext': '_datacos.ipynb'}
+dataset:
+    #{'base': cover1000}
+    {'base': datacos-benchmark}
 model:
     name: Cover
     block_l:
     - sequential_l:
         - layer_l:
-            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[12, 180], 'stride':[1,1]}]
+            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[12, 180], 'stride':[1,1]}] # --- (m, C, H=F,W=T)
             - [Activation, PReLU]
             - [MaxPool2d, {'kernel_size':[12, 1], 'stride': [1, 1]}]
         - layer_l:
-            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}]
+            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}] # --- (m, C, 1,W=T)
             - [Activation, PReLU]
         - layer_l:
-            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}]
+            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}] # --- (m, C, 1,W=T)
             - [Activation, PReLU]
         - layer_l:
-            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}]
+            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}] # --- (m, C, 1,W=T)
             - [Activation, PReLU]
         - layer_l:
-            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}]
+            - [Conv2d, {'in_channels':-1, 'out_channels':256, 'kernel_size':[1, 5], 'stride':[1,1]}] # --- (m, C, 1,W=T)
             - [Activation, PReLU]
     - sequential_l:
         - layer_l:
@@ -24,7 +28,7 @@ model:
 #            - [Mean, {'dim':3, 'keepdim':True}]
 #            - [SoftmaxWeight, empty]
 #            - [AutoPoolWeight, empty]
-            - [AutoPoolWeightSplit, empty]
+            - [AutoPoolWeightSplit, empty]  # --- Suppose input (m, C, 1, W=T)
         - layer_l:
             - [Squeeze, {'dim': [2,3]}]
             - [Linear, {'in_features':-1, 'out_features':32}]

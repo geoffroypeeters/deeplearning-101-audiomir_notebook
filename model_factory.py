@@ -10,176 +10,7 @@ Author: geoffroy.peeters@telecom-paris.fr
 import torch
 import torch.nn as nn
 import numpy as np
-from model_module import SincConv_fast
-from torch.nn.utils import weight_norm
-
-
-# ConvNeXt PAPER: https://arxiv.org/pdf/2201.03545
-# ConvNeXt CODE: https://github.com/facebookresearch/ConvNeXt/blob/main/models/convnext.py
-class ConvNeXtBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=7, drop_path=0.0):
-        super(ConvNeXtBlock, self).__init__()
-        
-        # 1. Depthwise convolution (spatial convolution with large kernel)
-        self.dwconv = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, padding=kernel_size // 2, groups=in_channels)
-        
-        # 2. Layer normalization applied across channels
-        self.norm = nn.LayerNorm(in_channels, eps=1e-6)  # LayerNorm is applied after permuting to (B, C, H, W)
-        
-        # 3. Pointwise convolution to project to higher dimensions (expanding and compressing channels)
-        self.pwconv1 = nn.Linear(in_channels, 4 * in_channels)  # expand channels by 4x
-        self.act = nn.GELU()  # GELU activation
-        self.pwconv2 = nn.Linear(4 * in_channels, out_channels)  # project back to original channels
-        
-        # 4. Stochastic depth (optional) for better regularization
-        self.drop_path = nn.Identity() if drop_path == 0 else StochasticDepth(drop_path)
-    
-    def forward(self, x):
-        # Input: (B, C, H, W)
-        residual = x
-
-        # 1. Depthwise convolution
-        x = self.dwconv(x)
-        
-        # 2. LayerNorm after permute to (B, H, W, C)
-        x = x.permute(0, 2, 3, 1)  # (B, C, H, W) -> (B, H, W, C)
-        x = self.norm(x)
-        
-        # 3. Pointwise convolutions + GELU
-        x = self.pwconv1(x)
-        x = self.act(x)
-        x = self.pwconv2(x)
-        
-        # 4. Drop path (if applicable) and residual connection
-        x = x.permute(0, 3, 1, 2)  # (B, H, W, C) -> (B, C, H, W)
-        x = self.drop_path(x) + residual  # Add residual connection
-        
-        return x
-
-class StochasticDepth(nn.Module):
-    """Drop paths (stochastic depth) per sample (when applied in the main path of residual blocks)."""
-    def __init__(self, drop_prob=None):
-        super(StochasticDepth, self).__init__()
-        self.drop_prob = drop_prob
-    
-    def forward(self, x):
-        if not self.training or self.drop_prob == 0.0:
-            return x
-        keep_prob = 1 - self.drop_prob
-        # Sample binary mask
-        shape = (x.shape[0],) + (1,) * (x.ndim - 1)
-        random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
-        binary_mask = torch.floor(random_tensor)
-        return x / keep_prob * binary_mask
-
-
-
-
-# TCN paper: https://arxiv.org/pdf/1803.01271
-# TCN code: https://github.com/locuslab/TCN
-class Chomp1d(nn.Module):
-    def __init__(self, chomp_size):
-        super(Chomp1d, self).__init__()
-        self.chomp_size = chomp_size
-    def forward(self, x):
-        return x[:, :, :-self.chomp_size].contiguous()
-
-
-class TemporalBlock(nn.Module):
-    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
-        super(TemporalBlock, self).__init__()
-        self.conv1 = weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size,
-                                           stride=stride, padding=padding, dilation=dilation))
-        self.chomp1 = Chomp1d(padding)
-        self.relu1 = nn.ReLU()
-        self.dropout1 = nn.Dropout(dropout)
-
-        self.conv2 = weight_norm(nn.Conv1d(n_outputs, n_outputs, kernel_size,
-                                           stride=stride, padding=padding, dilation=dilation))
-        self.chomp2 = Chomp1d(padding)
-        self.relu2 = nn.ReLU()
-        self.dropout2 = nn.Dropout(dropout)
-
-        self.net = nn.Sequential(self.conv1, self.chomp1, self.relu1, self.dropout1,
-                                 self.conv2, self.chomp2, self.relu2, self.dropout2)
-        self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
-        self.relu = nn.ReLU()
-        self.init_weights()
-
-    def init_weights(self):
-        self.conv1.weight.data.normal_(0, 0.01)
-        self.conv2.weight.data.normal_(0, 0.01)
-        if self.downsample is not None:
-            self.downsample.weight.data.normal_(0, 0.01)
-
-    def forward(self, x):
-        out = self.net(x)
-        res = x if self.downsample is None else self.downsample(x)
-        return self.relu(out + res)
-
-
-class TemporalConvNet(nn.Module):
-    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2):
-        super(TemporalConvNet, self).__init__()
-        layers = []
-        num_levels = len(num_channels)
-        for i in range(num_levels):
-            dilation_size = 2 ** i
-            in_channels = num_inputs if i == 0 else num_channels[i-1]
-            out_channels = num_channels[i]
-            layers += [TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
-                                     padding=(kernel_size-1) * dilation_size, dropout=dropout)]
-
-        self.network = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.network(x)
-
-
-
-
-# Paper: 
-# Code: 
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size = 3, stride = 1):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Sequential(
-                        nn.Conv2d(in_channels, out_channels, kernel_size = kernel_size, stride = stride, padding = 'same'),
-                        nn.BatchNorm2d(out_channels),
-                        nn.ReLU())
-        self.conv2 = nn.Sequential(
-                        nn.Conv2d(out_channels, out_channels, kernel_size = kernel_size, stride = 1, padding = 'same'),
-                        nn.BatchNorm2d(out_channels))
-        self.downsample = False
-        
-        if in_channels != out_channels:
-            self.downsample = True
-            self.conv_ds = nn.Conv2d(in_channels, out_channels, kernel_size = 1, stride = 1, padding = 'same')
-        self.relu = nn.ReLU()
-        self.out_channels = out_channels
-
-    def forward(self, x):
-        residual = x
-        out = self.conv1(x)
-        out = self.conv2(out)
-        if self.downsample: residual = self.conv_ds(x)
-        out += residual
-        out = self.relu(out)
-        return out
-
-
-
-# Paper: 
-# Code: https://github.com/seungjunlee96/Depthwise-Separable-Convolution_Pytorch/blob/master/DepthwiseSeparableConvolution/DepthwiseSeparableConvolution.py
-class depthwise_separable_conv(nn.Module):
-    def __init__(self, nin, kernels_per_layer, nout, kernel_size=3, padding=1):
-        super(depthwise_separable_conv, self).__init__()
-        self.depthwise = nn.Conv2d(nin, nin * kernels_per_layer, kernel_size=kernel_size, padding=padding, groups=nin)
-        self.pointwise = nn.Conv2d(nin * kernels_per_layer, nout, kernel_size=1)
-    def forward(self, x):
-        out = self.depthwise(x)
-        out = self.pointwise(out)
-        return out
+from model_module import SincConv_fast, ConvNeXtBlock, TemporalConvNet, ResidualBlock, depthwise_separable_conv
 
 
 
@@ -257,12 +88,21 @@ class nnMax(nn.Module):
         return out
 
 class nnSqueeze(nn.Module):
-    """ encapsultate .Squeeze as an object """
+    """ encapsultate .squeeze as an object """
     def __init__(self, dim):
         super().__init__()
         self.dim = dim
     def forward(self, X):
         out = X.squeeze(dim=self.dim)
+        return out
+
+class nnUnSqueeze(nn.Module):
+    """ encapsultate .unsqueeze as an object """
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+    def forward(self, X):
+        out = X.unsqueeze(dim=self.dim)
         return out
 
 class nnPermute(nn.Module):
@@ -298,6 +138,7 @@ class nnStoreAs(nn.Module):
     def forward(self, X):
         return X
 
+
 class nnCatWith(nn.Module):
     """ ??? """
     def __init__(self, key):
@@ -308,6 +149,31 @@ class nnCatWith(nn.Module):
     def forward(self, X):
         return X
  
+
+class nnLSTMlast(nn.Module):
+    """ ??? """
+    def __init__(self, param):
+        super().__init__()
+        self.module = nn.LSTM(input_size=param.input_size, hidden_size=param.hidden_size, num_layers=param.num_layers, batch_first=True)
+    def forward(self, X):
+        # --- output: (batch_size, sequence_length, H_out)
+        # --- h_n: (num_layers, batch_size, H_out) 
+        # --- c_n: (num_layers, batch_size, H_out) 
+        output, (h_n, c_n)  = self.module(X)
+        return h_n[-1,:,:]
+
+
+class nnLSTMall(nn.Module):
+    """ ??? """
+    def __init__(self, param):
+        super().__init__()
+        self.module = nn.LSTM(input_size=param.input_size, hidden_size=int(param.hidden_size/2), num_layers=param.num_layers, batch_first=True, bidirectional=True)
+    def forward(self, X):
+        # --- output: (batch_size, sequence_length, H_out)
+        # --- h_n: (num_layers, batch_size, H_out) 
+        # --- c_n: (num_layers, batch_size, H_out) 
+        output, (h_n, c_n)  = self.module(X)
+        return output
 
 
 class nnSoftmaxWeight(nn.Module):
@@ -377,8 +243,8 @@ def f_parse_component(module_type, param, current_input_dim):
     # --- Conv1D:   B, C, T
     # --- Conv2D:   B, C, H=Freq, W=Time
 
-    #print(module_type, param)
-
+    #print(module_type, param, current_input_dim)
+        
     if module_type=='LayerNorm':
         if param.normalized_shape==-1:
             param.normalized_shape = current_input_dim[1:] # --- B, C, T
@@ -408,12 +274,27 @@ def f_parse_component(module_type, param, current_input_dim):
         current_input_dim[1] = param.out_channels
         current_input_dim[2] = f_get_next_size(current_input_dim[2], param.kernel_size, param.stride)
 
+    elif module_type=='LSTMlast':
+        if param.input_size==-1:
+            param.input_size=current_input_dim[2]
+        module = nnLSTMlast(param)
+        current_input_dim =  [current_input_dim[0], param.hidden_size]
+
+    elif module_type=='LSTMall':
+        if param.input_size==-1:
+            param.input_size=current_input_dim[2]
+        module = nnLSTMall(param)
+        current_input_dim =  [current_input_dim[0], current_input_dim[1], param.hidden_size]
+
     elif module_type=='Conv1d': # --- B, C, T
         if param.in_channels==-1:
             param.in_channels=current_input_dim[1]
-        module = nn.Conv1d(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=param.kernel_size, stride=param.stride)
+        if 'padding' not in param.keys():
+            param.padding = 'valid'
+        module = nn.Conv1d(in_channels=param.in_channels, out_channels=param.out_channels, kernel_size=param.kernel_size, stride=param.stride, padding=param.padding)
         current_input_dim[1] = param.out_channels
-        current_input_dim[2] = f_get_next_size(current_input_dim[2], param.kernel_size, param.stride)
+        if param.padding != 'same':
+            current_input_dim[2] = f_get_next_size(current_input_dim[2], param.kernel_size, param.stride)
 
     elif module_type=='Conv1dTCN': # --- B, C, T
         if param.in_channels==-1:
@@ -504,7 +385,11 @@ def f_parse_component(module_type, param, current_input_dim):
 
     elif module_type=='Squeeze':
         module = nnSqueeze(param.dim)
-        current_input_dim = [c for c in current_input_dim if c > 1]
+        current_input_dim = [c for idx,c in enumerate(current_input_dim) if idx not in param.dim]
+        
+    elif module_type=='UnSqueeze':
+        module = nnUnSqueeze(param.dim)
+        current_input_dim.insert(param.dim, 1)
 
     elif module_type=='Permute':
         module = nnPermute(param.shape)

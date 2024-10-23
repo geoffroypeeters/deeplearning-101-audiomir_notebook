@@ -15,6 +15,30 @@ f_log = lambda data_m: np.log(1 + 10000*data_m)
 flog = lambda x: np.log(1+1000*x)-np.log(1+1000)
 
 
+def f_get_waveform(audio_v, sr_hz):
+    """
+    Convert audio to wavefor matrix
+
+    Parameters
+    ----------
+    audio_v
+        np.array containing the wavform
+    sr_hz
+        sampling rate in Hz
+
+    Returns
+    -------
+    data_m 
+        3D-tensor of shape (1, nb_frame) containing the audio waveform
+    time_sec_v 
+        np.array of shape (nb_frame) providing the corresponding times [in sec] of the analysis windows
+    """
+    data_m = audio_v.reshape(1,-1)
+    #time_sec_v = np.arange(0, len(audio_v), 1/sr_hz)
+    time_sec_v = np.arange(0, sr_hz, 1/sr_hz) # --- TO SPEED UP TRANSFER
+    return data_m, time_sec_v
+
+
 def f_get_lms(audio_v, sr_hz, param_lms):
     """
     Compute Log-Mel-Sepctrogram audio features
@@ -30,10 +54,10 @@ def f_get_lms(audio_v, sr_hz, param_lms):
     
     Returns
     -------
-    data_m 
-        2D-tensor of shape (nb_dim, nb_frame) containing the Log-Mel-Spectrogram
+    data_3m 
+        3D-tensor of shape (1, nb_dim, nb_frame) containing the Log-Mel-Spectrogram
     time_sec_v 
-        np.array of shape (nb_frame) provding corresponding time [in sec] of analysis windows
+        np.array of shape (nb_frame) providing the corresponding times [in sec] of the analysis windows
     """
     # --- data (nb_dim, nb_frames)
     mel_data_m = librosa.feature.melspectrogram(y=audio_v, sr=sr_hz,
@@ -45,8 +69,8 @@ def f_get_lms(audio_v, sr_hz, param_lms):
     time_sec_v = librosa.frames_to_time(frames=np.arange(nb_frame),
                                         sr=sr_hz,
                                         hop_length=param_lms.STEP_n)
-
-    return data_m, time_sec_v
+    data_3m =  np.expand_dims(data_m, 0)
+    return data_3m, time_sec_v
 
 
 def f_get_hcqt(audio_v, sr_hz, param_hcqt):
@@ -65,18 +89,22 @@ def f_get_hcqt(audio_v, sr_hz, param_hcqt):
     Returns:
     -------
     data_3m 
-        3D-tensor of shape (H, nb_dim, nb_frame)containing the Harmonic-CQT
+        3D-tensor of shape (H, nb_dim, nb_frame) containing the Harmonic-CQT
     time_sec_v (nb_frame)
-        np.array of shape (nb_frame) providing corresponding time [in sec] of analysis windows
+        np.array of shape (nb_frame) providing the corresponding times [in sec] of the analysis windows
     frequency_hz_v 
-        np.array of shape (nb_dim) providing the corresponding frequency [in Hz] of CQT channels
+        np.array of shape (nb_dim) providing the corresponding frequencies [in Hz] of the CQT channels
     """
+
+    BINS_PER_OCTAVE = 12 * param_hcqt.bins_per_semitone
+    N_BINS = param_hcqt.n_octaves * BINS_PER_OCTAVE
+
     for idx, h in enumerate(param_hcqt.h_l):
         data_m = np.abs(librosa.cqt(y=audio_v, sr=sr_hz,
-                                fmin=h*param_hcqt.FMIN,
-                                hop_length=param_hcqt.HOP_LENGTH,
-                                bins_per_octave=param_hcqt.BINS_PER_OCTAVE,
-                                n_bins=param_hcqt.N_BINS))
+                                fmin=h*param_hcqt.fmin,
+                                hop_length=param_hcqt.hop_length,
+                                bins_per_octave=BINS_PER_OCTAVE,
+                                n_bins=N_BINS))
         if idx==0:
             data_3m = np.zeros((len(param_hcqt.h_l), data_m.shape[0], data_m.shape[1]))
         data_3m[idx,:,:] = data_m
@@ -84,10 +112,10 @@ def f_get_hcqt(audio_v, sr_hz, param_hcqt):
     n_times = data_3m.shape[2]
     time_sec_v = librosa.frames_to_time(np.arange(n_times),
                                             sr=sr_hz,
-                                            hop_length=param_hcqt.HOP_LENGTH)
-    frequency_hz_v = librosa.cqt_frequencies(n_bins=param_hcqt.N_BINS,
-                                                    fmin=param_hcqt.FMIN,
-                                                    bins_per_octave=param_hcqt.BINS_PER_OCTAVE)
+                                            hop_length=param_hcqt.hop_length)
+    frequency_hz_v = librosa.cqt_frequencies(n_bins=N_BINS,
+                                                    fmin=param_hcqt.fmin,
+                                                    bins_per_octave=BINS_PER_OCTAVE)
 
     return data_3m, time_sec_v, frequency_hz_v
 
