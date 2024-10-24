@@ -1,10 +1,10 @@
 # D1 I2 Unet
-output_file: {'origin': 'TUTO_task_Multi_Pitch_Estimation.ipynb', 'ext': '_D1-I2-Unet.ipynb'}
+output_file: {'origin': 'TUTO_task_Multi_Pitch_Estimation.ipynb', 'ext': '_D2-I2-Unet.ipynb'}
 dataset:
     # D1
-    {'base': bach10, 'do_f0_annot': frame}
+    #{'base': bach10, 'do_f0_annot': frame}
     # D2
-    #{'base': maps, 'do_f0_annot': segment}
+    {'base': maps, 'do_f0_annot': segment}
 feature:
     # I1
     #{'type': hcqt, 'h_l': [1], 'bins_per_semitone': 5, 'n_octaves': 6, 'fmin': 32.7,  'hop_length': 512, 'patch_L_frame': 64, 'patch_STEP_frame': 32}
