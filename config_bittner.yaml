@@ -5,12 +5,12 @@
 # D1 I2 C4 à faire
 # ---- 
 # D2 I2 C1 -> MAP -> very long
-output_file: {'origin': 'TUTO_task_Multi_Pitch_Estimation.ipynb', 'ext': '_D1-I2-C1.ipynb'}
+output_file: {'origin': 'TUTO_task_Multi_Pitch_Estimation.ipynb', 'ext': '_D2-I2-C3.ipynb'}
 dataset:
     # D1
-    {'base': bach10, 'do_f0_annot': frame}
+    #{'base': bach10, 'do_f0_annot': frame}
     # D2
-    #{'base': maps, 'do_f0_annot': segment}
+    {'base': maps, 'do_f0_annot': segment}
 feature:
     # I1
     #{'type': hcqt, 'h_l': [1], 'bins_per_semitone': 5, 'n_octaves': 6, 'fmin': 32.7,  'hop_length': 512, 'patch_L_frame': 64, 'patch_STEP_frame': 32}
@@ -27,37 +27,37 @@ model:
         - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
             # C1
-            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
-            - [Activation, ReLU]
+            #- [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
+            #- [Activation, ReLU]
             # C2
             #- [Conv2dDS, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
             #- [Activation, ReLU]
             # C3 / C4
-            #- [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
+            - [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
         - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
             # C1
-            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
-            - [Activation, ReLU]
+            #- [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
+            #- [Activation, ReLU]
             # C2
             #- [Conv2dDS, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
             #- [Activation, ReLU]
             # C3
-            #- [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
+            - [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
             # C4
-            - [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
+            #- [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
         - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
             # C1
-            - [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
-            - [Activation, ReLU]
+            #- [Conv2d, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
+            #- [Activation, ReLU]
             # C2
             #- [Conv2dDS, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [3,3], 'stride': 1, 'padding': 'same'}]
             #- [Activation, ReLU]
             # C3
-            #- [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
+            - [Conv2dRes, {'in_channels': -1, 'out_channels': 64, 'kernel_size': [5,5], 'stride': 1, 'padding': 'same'}]
             # C4
-            - [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
+            #- [Conv2dNext, {'in_channels': -1, 'out_channels': 64, 'stride': 1, 'padding': 'same'}]
         - layer_l:
             - [BatchNorm2d, {'num_features': -1}]
             # --- C1
