@@ -1,7 +1,7 @@
-output_file: {'origin': 'TUTO_task_Cover_Song_Identification.ipynb', 'ext': '_datacos.ipynb'}
+output_file: {'origin': 'TUTO_task_Cover_Song_Identification.ipynb', 'ext': 'cover1000.ipynb'}
 dataset:
-    #{'base': cover1000}
-    {'base': datacos-benchmark}
+    {'base': cover1000}
+    #{'base': datacos-benchmark}
 model:
     name: Cover
     block_l:
